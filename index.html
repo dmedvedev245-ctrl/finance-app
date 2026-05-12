@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#07070f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="Финансы">
+<title>Финансовый дашборд</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#07070f;--surface:#0f0f1e;--card:#13131f;--border:#1e1e30;
+  --purple:#c84bff;--cyan:#3dc8ff;--pink:#ff6bcc;--orange:#ff8c3a;
+  --red:#ff3b3b;--green:#3dff9b;--yellow:#ffc53d;
+  --text:#e2e2f0;--muted:#6b6b8a;
+  --nav:64px;--safe:env(safe-area-inset-bottom,0px);
+}
+body{font-family:-apple-system,'SF Pro Text',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+.app{max-width:480px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;position:relative;}
+
+/* HEADER */
+.hdr{padding:52px 16px 14px;border-bottom:1px solid var(--border);background:rgba(7,7,15,.92);backdrop-filter:blur(20px);position:sticky;top:0;z-index:50;}
+.hdr-row{display:flex;justify-content:space-between;align-items:flex-start;}
+.hdr-sub{font-size:10px;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;}
+.hdr-title{font-size:22px;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--cyan));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hdr-debt-lbl{font-size:10px;color:var(--muted);text-align:right;}
+.hdr-debt-val{font-size:18px;font-weight:700;color:var(--red);}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;padding:14px 14px calc(var(--nav) + var(--safe) + 16px);}
+
+/* BOTTOM NAV */
+.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:rgba(10,10,22,.96);backdrop-filter:blur(24px);border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe);z-index:100;}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:8px 4px;background:none;border:none;cursor:pointer;color:var(--muted);font-size:9px;font-family:inherit;min-height:var(--nav);transition:color .2s;}
+.nb.on{color:var(--purple);}
+.nb .ic{font-size:22px;line-height:1;}
+
+/* CARDS */
+.card{background:var(--card);border-radius:16px;padding:15px 16px;border:1px solid var(--border);margin-bottom:12px;}
+.ctitle{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:6px;}
+
+/* STAT GRID */
+.sgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;}
+.sbox{background:var(--surface);border-radius:12px;padding:10px 8px;border:1px solid var(--border);text-align:center;}
+.sbox .lbl{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px;}
+.sbox .val{font-size:11px;font-weight:700;line-height:1.3;}
+
+/* BADGE */
+.badge{display:inline-block;font-size:9px;font-weight:800;padding:3px 8px;border-radius:6px;letter-spacing:.05em;}
+
+/* SUB TABS */
+.stabs{display:flex;gap:4px;margin-bottom:14px;background:var(--surface);padding:4px;border-radius:12px;}
+.stab{flex:1;padding:8px 4px;border-radius:9px;border:none;background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+.stab.on{background:var(--card);color:var(--text);}
+
+/* LIST */
+.li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);}
+.li:last-child{border-bottom:none;padding-bottom:0;}
+
+/* INPUTS */
+input[type=text],input[type=number],input[type=date],select,textarea{background:#09090f;border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:14px;outline:none;width:100%;font-family:inherit;-webkit-appearance:none;appearance:none;}
+input:focus,select:focus{border-color:var(--purple);}
+.ig{margin-bottom:10px;}
+.ilbl{font-size:11px;color:var(--muted);margin-bottom:5px;display:block;}
+
+/* BUTTONS */
+.btn{padding:12px 20px;border-radius:12px;border:none;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;}
+.btn:active{opacity:.75;}
+.bprimary{background:var(--purple);color:#fff;}
+.boutline{background:transparent;border:1px dashed var(--purple);color:var(--purple);}
+.bsm{padding:7px 14px;font-size:12px;border-radius:9px;}
+.bdanger{background:transparent;color:var(--red);border:1px solid #2a0808;font-size:12px;}
+.bghost{background:var(--surface);color:var(--muted);border:1px solid var(--border);}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:flex-end;justify-content:center;animation:fadeIn .15s;}
+.modal{background:var(--surface);border-radius:22px 22px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom,0px) + 20px);width:100%;max-width:480px;max-height:88vh;overflow-y:auto;animation:slideUp .2s;}
+.mtitle{font-size:16px;font-weight:700;margin-bottom:16px;text-align:center;}
+.mbtns{display:flex;gap:8px;margin-top:16px;}
+
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{transform:translateY(40px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* PROGRESS */
+.pbar{background:var(--border);border-radius:4px;height:6px;overflow:hidden;margin-top:6px;}
+.pfill{height:100%;border-radius:4px;transition:width .4s;}
+
+/* TOAST */
+.toast{position:fixed;top:72px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--purple);border-radius:12px;padding:10px 20px;font-size:13px;z-index:999;white-space:nowrap;pointer-events:none;animation:toastAnim 2.6s forwards;}
+@keyframes toastAnim{0%{opacity:0;transform:translateX(-50%) translateY(-8px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}75%{opacity:1}100%{opacity:0}}
+
+/* ALERTS */
+.alert{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;margin-bottom:8px;font-size:13px;}
+.ared{background:#1a0505;border:1px solid #ff3b3b33;}
+.ayellow{background:#1a1000;border:1px solid #ffc53d33;}
+
+/* TIMELINE */
+.titem{display:flex;gap:12px;padding-bottom:16px;position:relative;}
+.titem::before{content:'';position:absolute;left:15px;top:30px;bottom:0;width:1px;background:var(--border);}
+.titem:last-child::before{display:none;}
+.tdot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;z-index:1;}
+.tbody{flex:1;padding-top:4px;}
+
+/* DIVIDER */
+.div{height:1px;background:var(--border);margin:10px 0;}
+
+/* BAR CHART */
+.bars{display:flex;align-items:flex-end;gap:8px;height:120px;}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;}
+.bstack{width:100%;border-radius:6px 6px 0 0;display:flex;flex-direction:column-reverse;overflow:hidden;min-height:4px;}
+.blbl{font-size:9px;color:var(--muted);text-align:center;line-height:1.3;}
+
+.row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;}
+.rl{font-size:12px;color:var(--muted);}
+.rv{font-size:13px;font-weight:600;}
+
+.empty{text-align:center;color:var(--muted);font-size:13px;padding:28px;line-height:2;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="hdr">
+    <div class="hdr-row">
+      <div>
+        <div class="hdr-sub">Финансовый дашборд</div>
+        <div class="hdr-title" id="htitle">Обзор</div>
+      </div>
+      <div>
+        <div class="hdr-debt-lbl">Долги с %</div>
+        <div class="hdr-debt-val" id="hdebt">—</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="content" id="content"></main>
+
+  <nav class="bnav">
+    <button class="nb on" data-t="home"    onclick="go('home')">   <span class="ic">🏠</span>Главная</button>
+    <button class="nb"    data-t="debts"   onclick="go('debts')">  <span class="ic">💳</span>Долги</button>
+    <button class="nb"    data-t="people"  onclick="go('people')"> <span class="ic">👥</span>Люди</button>
+    <button class="nb"    data-t="history" onclick="go('history')"><span class="ic">📋</span>История</button>
+    <button class="nb"    data-t="charts"  onclick="go('charts')"> <span class="ic">📊</span>Графики</button>
+  </nav>
+</div>
+<div id="mc"></div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────
+const CC = ['#c84bff','#3dc8ff','#ff6bcc','#ff8c3a','#3dff9b','#ffc53d'];
+const DEF = {
+  credits:[
+    {id:1,name:'Т-банк', balance:128000,rate:25,payment:5500,rday:15,goal:'',color:'#c84bff'},
+    {id:2,name:'Сбер',   balance:61000, rate:19,payment:3200,rday:20,goal:'',color:'#3dc8ff'},
+    {id:3,name:'Альфа',  balance:57000, rate:21,payment:3000,rday:10,goal:'',color:'#ff6bcc'},
+    {id:4,name:'Яндекс', balance:30000, rate:22,payment:2000,rday:5, goal:'',color:'#ff8c3a'},
+  ],
+  freeDebts:[
+    {id:1,name:'Мама',        amount:1700000,urg:'low'},
+    {id:2,name:'Общий',       amount:150000, urg:'medium'},
+    {id:3,name:'Сбер (б/п)',  amount:63000,  urg:'medium'},
+    {id:4,name:'Т-банк (б/п)',amount:136000, urg:'medium'},
+    {id:5,name:'Яндекс (б/п)',amount:31000,  urg:'low'},
+  ],
+  income:{salary:0,card:28000,cash:0,incoming:0},
+  expenses:[{id:1,name:'Продукты',amt:0},{id:2,name:'Аренда',amt:0},{id:3,name:'Транспорт',amt:0}],
+  history:[],
+  debtors:[],
+};
+
+// ─── STATE ────────────────────────────────────────
+let S = loadState();
+let TAB = 'home';
+let STAB = {debts:'credits'};
+
+function loadState(){
+  try{ const s=localStorage.getItem('fin_v3'); if(s) return JSON.parse(s); }catch(e){}
+  return JSON.parse(JSON.stringify(DEF));
+}
+function save(){ localStorage.setItem('fin_v3',JSON.stringify(S)); }
+
+// ─── UTILS ────────────────────────────────────────
+const f = n => new Intl.NumberFormat('ru-RU').format(Math.round(n));
+const fd = d => d ? new Date(d+'T12:00').toLocaleDateString('ru-RU',{day:'numeric',month:'short',year:'numeric'}) : '';
+const today = () => new Date().toISOString().slice(0,10);
+const uid = () => Date.now()+Math.random();
+
+function months(bal,rate,pay){
+  const r=rate/100/12;
+  if(bal<=0)return 0;
+  if(r===0)return Math.ceil(bal/pay);
+  if(pay<=bal*r)return Infinity;
+  return Math.ceil(-Math.log(1-(bal*r)/pay)/Math.log(1+r));
+}
+function prio(rate){
+  if(rate>=25)return{lbl:'СРОЧНО',  c:'#ff3b3b',bg:'#2a0808'};
+  if(rate>=18)return{lbl:'СКОРО',   c:'#ffc53d',bg:'#1f1500'};
+  return             {lbl:'НЕ СРОЧНО',c:'#3dff9b',bg:'#05200f'};
+}
+const URG={high:{lbl:'СРОЧНО',c:'#ff3b3b'},medium:{lbl:'СКОРО',c:'#ffc53d'},low:{lbl:'ПОДОЖДЁТ',c:'#3dff9b'}};
+
+function totals(){
+  const cd = S.credits.reduce((s,c)=>s+c.balance,0);
+  const fd = S.freeDebts.reduce((s,d)=>s+d.amount,0);
+  const py = S.credits.reduce((s,c)=>s+c.payment,0);
+  const ic = Object.values(S.income).reduce((s,v)=>s+v,0);
+  const ex = S.expenses.reduce((s,e)=>s+e.amt,0);
+  const dt = S.debtors.reduce((s,d)=>s+(d.amount-(d.paid||0)),0);
+  return{cd,fd,tot:cd+fd,py,ic,ex,dt,rem:ic-ex-py};
+}
+
+// ─── NAVIGATION ──────────────────────────────────
+const TITLES={home:'Обзор',debts:'Мои долги',people:'Люди',history:'История платежей',charts:'Графики'};
+function go(t){
+  TAB=t;
+  document.querySelectorAll('.nb').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  document.getElementById('htitle').textContent=TITLES[t]||t;
+  render();
+}
+
+// ─── RENDER ──────────────────────────────────────
+function render(){
+  const T=totals();
+  document.getElementById('hdebt').textContent=`−${f(T.cd)} ₽`;
+  const c=document.getElementById('content');
+  if(TAB==='home')   c.innerHTML=rHome(T);
+  if(TAB==='debts')  c.innerHTML=rDebts(T);
+  if(TAB==='people') c.innerHTML=rPeople(T);
+  if(TAB==='history')c.innerHTML=rHistory();
+  if(TAB==='charts') c.innerHTML=rCharts(T);
+}
+
+// ═══════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════
+function rHome(T){
+  const now=new Date(), dd=now.getDate();
+
+  // reminders
+  const alerts=S.credits.filter(c=>c.balance>0&&c.rday).flatMap(c=>{
+    const diff=c.rday-dd;
+    if(diff===0)     return[{cls:'ared', ico:'🔴',msg:`Сегодня платёж: ${c.name} — ${f(c.payment)} ₽`,id:c.id}];
+    if(diff>0&&diff<=3) return[{cls:'ayellow',ico:'🟡',msg:`Через ${diff} дн. платёж: ${c.name}`,id:c.id}];
+    if(diff<0&&diff>=-2)return[{cls:'ared', ico:'⛔',msg:`Просрочен платёж: ${c.name}!`,id:c.id}];
+    return[];
+  });
+
+  // goals
+  const goals=S.credits.filter(c=>c.goal&&c.balance>0).map(c=>{
+    const dl=Math.ceil((new Date(c.goal)-now)/86400000);
+    const mo=months(c.balance,c.rate,c.payment);
+    const ok=isFinite(mo)&&mo*30<=dl+30;
+    const paid=S.history.filter(h=>h.cid===c.id).reduce((s,h)=>s+h.amt,0);
+    const orig=c.balance+paid;
+    const pct=orig>0?Math.round(paid/orig*100):0;
+    return{c,dl,ok,pct};
+  });
+
+  const sorted=[...S.credits].sort((a,b)=>b.rate-a.rate);
+
+  return`
+  ${alerts.length?`<div class="card" style="border-color:#ff3b3b44;">
+    <div class="ctitle" style="color:#ff3b3b;">🔔 Напоминания</div>
+    ${alerts.map(a=>`<div class="alert ${a.cls}">
+      <span>${a.ico}</span>
+      <span style="flex:1;">${a.msg}</span>
+      <button class="btn bprimary bsm" style="flex-shrink:0;" onclick="openPay(${a.id})">Оплатить</button>
+    </div>`).join('')}
+  </div>`:''}
+
+  <div class="sgrid">
+    ${[[`−${f(T.cd)} ₽`,'Кредиты','#ff3b3b'],[`−${f(T.fd)} ₽`,'Долги б/п','#ff8c3a'],
+       [`+${f(T.dt)} ₽`,'Мне должны','#3dff9b'],[`+${f(T.ic)} ₽`,'Доход/мес','#3dc8ff'],
+       [`−${f(T.py)} ₽`,'Платежи','#ff6bcc'],
+       [`${T.rem>=0?'+':''}${f(T.rem)} ₽`,'Остаток',T.rem>=0?'#3dff9b':'#ff3b3b']
+      ].map(([v,l,c])=>`<div class="sbox"><div class="lbl">${l}</div><div class="val" style="color:${c};">${v}</div></div>`).join('')}
+  </div>
+
+  ${goals.length?`<div class="card">
+    <div class="ctitle" style="color:#ffc53d;">🎯 Цели</div>
+    ${goals.map(g=>`<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+        <span style="font-size:13px;font-weight:700;">${g.c.name}</span>
+        <span style="font-size:11px;color:${g.ok?'#3dff9b':'#ff3b3b'};">${g.ok?'✅ В графике':'⚠️ Не успеваем'}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);">Дедлайн: ${fd(g.c.goal)} · ${g.dl>0?g.dl+' дн.':'срок прошёл'}</div>
+      <div style="font-size:12px;margin-top:3px;">Остаток: <b style="color:#ff3b3b;">${f(g.c.balance)} ₽</b> · погашено ${g.pct}%</div>
+      <div class="pbar"><div class="pfill" style="width:${g.pct}%;background:${g.c.color||'#c84bff'};"></div></div>
+    </div>`).join('')}
+  </div>`:''}
+
+  <div class="card">
+    <div class="ctitle" style="color:#ff8c3a;">🎯 Что закрывать первым</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Метод лавины — сначала самый высокий %</div>
+    ${sorted.map((c,i)=>{
+      const p=prio(c.rate), mo=months(c.balance,c.rate,c.payment), int=Math.round(c.balance*c.rate/100/12);
+      return`<div class="li">
+        <div style="width:24px;height:24px;border-radius:50%;background:${p.bg};color:${p.c};font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${i+1}</div>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:700;">${c.name}</div>
+          <div style="font-size:11px;color:var(--muted);">${c.rate}% · ${f(c.balance)} ₽ · ${isFinite(mo)?mo+' мес':'∞'}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-size:11px;color:#ff3b3b;">−${f(int)}/мес</div>
+          <span class="badge" style="background:${p.bg};color:${p.c};margin-top:3px;display:block;">${p.lbl}</span>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// DEBTS
+// ═══════════════════════════════════════
+function rDebts(T){
+  const s=STAB.debts;
+  return`<div class="stabs">
+    <button class="stab ${s==='credits'?'on':''}" onclick="setST('debts','credits')">💳 Кредиты</button>
+    <button class="stab ${s==='free'?'on':''}"    onclick="setST('debts','free')">🤝 Без %</button>
+    <button class="stab ${s==='income'?'on':''}"  onclick="setST('debts','income')">💰 Доходы</button>
+  </div>
+  ${s==='credits'?rCredits():''}
+  ${s==='free'?rFree():''}
+  ${s==='income'?rIncome(T):''}`;
+}
+
+function rCredits(){
+  return S.credits.map(c=>{
+    const p=prio(c.rate), int=c.balance*c.rate/100/12, prin=Math.max(0,c.payment-int);
+    const mo=months(c.balance,c.rate,c.payment), ov=isFinite(mo)?c.payment*mo-c.balance:null;
+    const paid=S.history.filter(h=>h.cid===c.id).reduce((s,h)=>s+h.amt,0);
+    const orig=c.balance+paid, pct=orig>0?Math.round(paid/orig*100):0;
+    return`<div class="card" style="border-color:${p.c}44;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div style="font-size:15px;font-weight:800;">${c.name}</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <span class="badge" style="background:${p.bg};color:${p.c};">${p.lbl}</span>
+          <button onclick="openEditC(${c.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;line-height:1;">⚙️</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="sbox"><div class="lbl">Остаток</div><div class="val" style="color:#ff3b3b;">${f(c.balance)} ₽</div></div>
+        <div class="sbox"><div class="lbl">Ставка</div><div class="val" style="color:#ffc53d;">${c.rate}%</div></div>
+        <div class="sbox"><div class="lbl">Мес. платёж</div><div class="val">${f(c.payment)} ₽</div></div>
+        <div class="sbox"><div class="lbl">Мес. осталось</div><div class="val" style="color:#3dc8ff;">${isFinite(mo)?mo:'∞'}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+        <div class="sbox" style="background:#1a0505;border-color:#ff3b3b22;"><div class="lbl">% банку/мес</div><div class="val" style="color:#ff3b3b;">${f(int)} ₽</div></div>
+        <div class="sbox" style="background:#051530;border-color:#3dc8ff22;"><div class="lbl">Гасится долг</div><div class="val" style="color:#3dc8ff;">${f(prin)} ₽</div></div>
+      </div>
+      ${ov!==null?`<div style="background:var(--surface);border-radius:10px;padding:8px 12px;margin-bottom:10px;font-size:12px;"><span style="color:var(--muted);">Переплата банку: </span><span style="color:#ffc53d;font-weight:700;">${f(ov)} ₽</span></div>`:''}
+      ${c.goal?`<div style="background:var(--surface);border-radius:10px;padding:10px;margin-bottom:10px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px;">
+          <span style="color:var(--muted);">🎯 Цель: ${fd(c.goal)}</span>
+          <span style="color:var(--purple);">${pct}% погашено</span>
+        </div>
+        <div class="pbar"><div class="pfill" style="width:${pct}%;background:${p.c};"></div></div>
+      </div>`:''}
+      ${c.payment<=int?`<div style="background:#2a0808;border-radius:8px;padding:8px 10px;margin-bottom:10px;color:#ff3b3b;font-size:11px;">⚠️ Платёж меньше процентов! Долг только растёт.</div>`:''}
+      <div style="display:flex;gap:8px;">
+        <button class="btn bprimary bsm" style="flex:1;" onclick="openPay(${c.id})">💳 Внести платёж</button>
+        <button class="btn bghost bsm" onclick="openEditC(${c.id})">⚙️ Изменить</button>
+      </div>
+    </div>`;
+  }).join('')+`<button class="btn boutline" style="width:100%;" onclick="openAddC()">+ Добавить кредит</button>`;
+}
+
+function rFree(){
+  const tot=S.freeDebts.reduce((s,d)=>s+d.amount,0);
+  return S.freeDebts.map(d=>{
+    const u=URG[d.urg];
+    return`<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div style="font-size:14px;font-weight:700;">${d.name}</div>
+          <div style="font-size:15px;color:#ff8c3a;font-weight:700;margin-top:4px;">${f(d.amount)} ₽</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <select onchange="updFD(${d.id},'urg',this.value)" style="background:var(--surface);border:1px solid ${u.c}55;border-radius:8px;padding:7px 10px;color:${u.c};font-size:11px;font-weight:700;cursor:pointer;width:auto;">
+            <option value="high" ${d.urg==='high'?'selected':''}>СРОЧНО</option>
+            <option value="medium" ${d.urg==='medium'?'selected':''}>СКОРО</option>
+            <option value="low" ${d.urg==='low'?'selected':''}>ПОДОЖДЁТ</option>
+          </select>
+          <button onclick="delFD(${d.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;">удалить</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('')
+  +`<div class="card"><div class="row"><span class="rl">Итого долгов без %</span><span class="rv" style="color:#ff8c3a;">−${f(tot)} ₽</span></div></div>
+  <button class="btn boutline" style="width:100%;border-color:#ff8c3a;color:#ff8c3a;" onclick="openAddFD()">+ Добавить долг</button>`;
+}
+
+function rIncome(T){
+  return`<div class="card">
+    <div class="ctitle" style="color:#3dc8ff;">💰 Доходы в месяц</div>
+    ${[['salary','Зарплата'],['card','Карта'],['cash','Наличные'],['incoming','Ожидаемые выплаты']].map(([k,l])=>`<div class="ig">
+      <label class="ilbl">${l}</label>
+      <input type="number" value="${S.income[k]}" onchange="updInc('${k}',this.value)" placeholder="0">
+    </div>`).join('')}
+    <div class="row"><span class="rl">Итого</span><span class="rv" style="color:#3dc8ff;">+${f(T.ic)} ₽</span></div>
+  </div>
+  <div class="card">
+    <div class="ctitle" style="color:#ff6bcc;">💸 Расходы в месяц</div>
+    ${S.expenses.map(e=>`<div style="display:flex;gap:8px;margin-bottom:8px;">
+      <input type="text" value="${e.name}" onchange="updEx(${e.id},'name',this.value)" style="flex:1;">
+      <input type="number" value="${e.amt}" onchange="updEx(${e.id},'amt',this.value)" style="width:110px;text-align:right;">
+      <button onclick="delEx(${e.id})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:22px;flex-shrink:0;line-height:1;">×</button>
+    </div>`).join('')}
+    <button onclick="addEx()" style="width:100%;padding:8px;background:transparent;border:1px dashed #ff6bcc55;border-radius:10px;color:#ff6bcc;cursor:pointer;font-size:12px;font-family:inherit;">+ Добавить статью</button>
+  </div>
+  <div class="card" style="border-color:#c84bff44;">
+    <div class="ctitle" style="color:#c84bff;">⚖️ Баланс месяца</div>
+    <div class="row"><span class="rl">Доход</span><span class="rv" style="color:#3dc8ff;">+${f(T.ic)} ₽</span></div>
+    <div class="row"><span class="rl">Расходы</span><span class="rv" style="color:#ff6bcc;">−${f(T.ex)} ₽</span></div>
+    <div class="row"><span class="rl">Кредитные платежи</span><span class="rv" style="color:#ff3b3b;">−${f(T.py)} ₽</span></div>
+    <div class="div"></div>
+    <div class="row"><span class="rl" style="font-size:14px;font-weight:700;">Остаток</span><span class="rv" style="font-size:19px;color:${T.rem>=0?'#3dff9b':'#ff3b3b'};">${T.rem>=0?'+':''}${f(T.rem)} ₽</span></div>
+    ${T.rem<0?`<div style="background:#1a0505;border-radius:10px;padding:10px;margin-top:8px;color:#ff3b3b;font-size:12px;">⚠️ Расходы превышают доходы на ${f(Math.abs(T.rem))} ₽/мес</div>`:''}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// PEOPLE
+// ═══════════════════════════════════════
+function rPeople(T){
+  const dt=S.debtors, tot=T.dt;
+  return`<div class="card" style="${tot>0?'border-color:#3dff9b33;':''}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="ctitle" style="color:#3dff9b;margin-bottom:0;">👥 Мне должны</div>
+      <button class="btn bprimary bsm" onclick="openAddDt()">+ Добавить</button>
+    </div>
+    ${dt.length===0?`<div class="empty">Никто не должен 👌<br><span style="font-size:11px;">Нажми «+ Добавить» чтобы записать</span></div>`:''}
+    ${dt.map(d=>{
+      const rem=d.amount-(d.paid||0), pct=Math.round((d.paid||0)/d.amount*100);
+      return`<div class="li" style="align-items:flex-start;padding:12px 0;">
+        <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#c84bff33,#3dc8ff33);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;flex-shrink:0;">${d.name.charAt(0).toUpperCase()}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+            <span style="font-size:14px;font-weight:700;">${d.name}</span>
+            <span style="font-size:15px;font-weight:700;color:${d.status==='paid'?'var(--muted)':'#3dff9b'};">${d.status==='paid'?'Вернул':'+'+ f(rem)+' ₽'}</span>
+          </div>
+          ${d.note?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${d.note}</div>`:''}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">Дал: ${fd(d.date)} · Сумма: ${f(d.amount)} ₽</div>
+          ${(d.paid||0)>0?`<div style="margin-top:6px;"><div class="pbar" style="height:4px;"><div class="pfill" style="width:${pct}%;background:#3dff9b;"></div></div><div style="font-size:10px;color:var(--muted);margin-top:2px;">Вернул ${f(d.paid||0)} из ${f(d.amount)} ₽</div></div>`:''}
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+            ${d.status!=='paid'?`<button class="btn bsm" style="background:#051a0b;color:#3dff9b;border:1px solid #3dff9b33;" onclick="dtPaid(${d.id})">✅ Вернул всё</button>`:'<span class="badge" style="background:#051a0b;color:#3dff9b;">ВЕРНУЛ</span>'}
+            ${d.status!=='paid'?`<button class="btn bghost bsm" onclick="openPartial(${d.id})">Частично</button>`:''}
+            <button class="btn bdanger bsm" onclick="delDt(${d.id})">Удалить</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}
+    ${dt.length>0?`<div class="div"></div><div class="row"><span class="rl">Всего мне должны</span><span class="rv" style="color:#3dff9b;font-size:16px;">+${f(tot)} ₽</span></div>`:''}
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════
+function rHistory(){
+  const hist=[...S.history].sort((a,b)=>new Date(b.date)-new Date(a.date));
+  const totPaid=hist.reduce((s,h)=>s+h.amt,0);
+  return`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+    <div style="font-size:12px;color:var(--muted);">Всего внесено</div>
+    <div style="font-size:17px;font-weight:700;color:#3dc8ff;">${f(totPaid)} ₽</div>
+  </div>
+  ${hist.length===0?`<div class="card"><div class="empty">📋<br>История пуста<br><span style="font-size:11px;">Платежи появятся здесь</span></div></div>`:
+  `<div class="card">
+    ${hist.map(h=>{
+      const tc=h.type==='payment'?'#3dc8ff':'#ffc53d', ti=h.type==='payment'?'💳':'💵';
+      return`<div class="titem">
+        <div class="tdot" style="background:${tc}22;color:${tc};">${ti}</div>
+        <div class="tbody">
+          <div style="font-size:13px;font-weight:700;">${h.cn}</div>
+          <div style="font-size:15px;font-weight:700;color:${tc};margin-top:1px;">−${f(h.amt)} ₽</div>
+          ${h.note?`<div style="font-size:11px;color:var(--muted);margin-top:2px;">${h.note}</div>`:''}
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${fd(h.date)}</div>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>
+  <button class="btn bdanger bsm" style="width:100%;margin-top:4px;" onclick="clrHist()">🗑️ Очистить историю</button>`}`;
+}
+
+// ═══════════════════════════════════════
+// CHARTS
+// ═══════════════════════════════════════
+function rCharts(T){
+  const cr=S.credits.filter(c=>c.balance>0);
+  const tot=cr.reduce((s,c)=>s+c.balance,0);
+
+  // pie conic-gradient
+  let cumP=0, parts='';
+  cr.forEach((c,i)=>{
+    const p=(c.balance/tot)*100;
+    parts+=`${CC[i]} ${cumP}% ${cumP+p}%,`;
+    cumP+=p;
+  });
+  if(parts) parts=parts.slice(0,-1);
+
+  // bar max
+  const maxP=Math.max(...cr.map(c=>c.payment),1);
+
+  // forecast
+  let rem=cr.map(c=>({...c})); const fc=[];
+  for(let m=0;m<=60;m++){
+    const t=rem.reduce((s,c)=>s+Math.max(0,c.balance),0);
+    fc.push(t); if(t<=0)break;
+    rem=rem.map(c=>{if(c.balance<=0)return c;const i=c.balance*c.rate/100/12;return{...c,balance:Math.max(0,c.balance-Math.max(0,c.payment-i))};});
+  }
+  const fcMo=fc.length-1;
+  const svgW=320,svgH=90,mxF=Math.max(...fc,1);
+  const pts=fc.map((v,i)=>{const x=(i/(fc.length-1))*(svgW-16)+8,y=svgH-8-((v/mxF)*(svgH-16));return`${x},${y}`;}).join(' ');
+
+  // total monthly interest
+  const totInt=cr.reduce((s,c)=>s+c.balance*c.rate/100/12,0);
+
+  return`
+  <div class="card">
+    <div class="ctitle" style="color:#c84bff;">🍕 Структура кредитного долга</div>
+    <div style="display:flex;align-items:center;gap:16px;">
+      <div style="width:110px;height:110px;border-radius:50%;background:conic-gradient(${parts||'#1e1e30 0% 100%'});flex-shrink:0;"></div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:7px;">
+        ${cr.map((c,i)=>{const p=tot>0?Math.round(c.balance/tot*100):0;return`<div style="display:flex;align-items:center;gap:7px;font-size:12px;">
+          <div style="width:9px;height:9px;border-radius:50%;background:${CC[i]};flex-shrink:0;"></div>
+          <span>${c.name} — ${p}%</span>
+        </div>`;}).join('')}
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted);text-align:center;">Итого: ${f(T.cd)} ₽</div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle" style="color:#3dc8ff;">📊 Состав ежемесячного платежа</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;"><span style="display:inline-block;width:8px;height:8px;background:#ff3b3b88;border-radius:2px;margin-right:4px;"></span>Проценты банку<span style="margin-left:12px;"></span><span style="display:inline-block;width:8px;height:8px;background:#3dc8ff;border-radius:2px;margin-right:4px;"></span>Гашение долга</div>
+    <div class="bars">
+      ${cr.map((c,i)=>{
+        const int=c.balance*c.rate/100/12, pr=Math.max(0,c.payment-int);
+        const th=(c.payment/maxP)*100, ih=(int/c.payment)*100, ph=100-ih;
+        return`<div class="bcol">
+          <div class="bstack" style="height:${th}%;">
+            <div style="height:${ph}%;background:${CC[i]};"></div>
+            <div style="height:${ih}%;background:#ff3b3b88;"></div>
+          </div>
+          <div class="blbl">${c.name}<br>${f(c.payment)}₽</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle" style="color:#ff8c3a;">📈 Прогноз погашения</div>
+    <svg width="100%" viewBox="0 0 ${svgW} ${svgH}" style="overflow:visible;display:block;">
+      <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#c84bff" stop-opacity=".35"/><stop offset="100%" stop-color="#c84bff" stop-opacity="0"/></linearGradient></defs>
+      <polygon points="8,${svgH-8} ${pts} ${(fc.length-1)/(fc.length-1)*(svgW-16)+8},${svgH-8}" fill="url(#g1)"/>
+      <polyline points="${pts}" fill="none" stroke="#c84bff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="8" y="${svgH-12}" font-size="9" fill="#6b6b8a">${f(fc[0])} ₽</text>
+      <text x="${svgW-8}" y="${svgH-12}" font-size="9" fill="#3dff9b" text-anchor="end">0 ₽</text>
+    </svg>
+    <div style="text-align:center;font-size:12px;color:var(--muted);margin-top:4px;">Свободен от кредитов через <b style="color:#c84bff;">${fcMo} мес. (~${Math.floor(fcMo/12)} лет ${fcMo%12} мес.)</b></div>
+  </div>
+
+  <div class="card">
+    <div class="ctitle" style="color:#ffc53d;">💸 Сколько уходит банкам ежемесячно</div>
+    ${cr.map((c,i)=>{
+      const int=Math.round(c.balance*c.rate/100/12);
+      const bw=totInt>0?(int/totInt)*100:0;
+      return`<div style="margin-bottom:11px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+          <span>${c.name} (${c.rate}%)</span>
+          <span style="color:#ff3b3b;font-weight:600;">−${f(int)}/мес</span>
+        </div>
+        <div style="background:var(--border);border-radius:4px;height:6px;overflow:hidden;"><div style="width:${bw}%;height:100%;background:${CC[i]};border-radius:4px;"></div></div>
+      </div>`;
+    }).join('')}
+    <div style="background:var(--surface);border-radius:10px;padding:10px 12px;border:1px solid #ffc53d33;">
+      <div style="font-size:11px;color:var(--muted);">Итого в месяц только на проценты:</div>
+      <div style="font-size:17px;font-weight:700;color:#ffc53d;margin-top:2px;">${f(totInt)} ₽</div>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════
+function modal(html){
+  document.getElementById('mc').innerHTML=`<div class="overlay" onclick="if(event.target===this)cm()"><div class="modal">${html}</div></div>`;
+}
+function cm(){ document.getElementById('mc').innerHTML=''; }
+
+function openPay(id){
+  const c=S.credits.find(x=>x.id==id); if(!c)return;
+  modal(`<div class="mtitle">💳 Платёж — ${c.name}</div>
+  <div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:16px;">Остаток: <b style="color:#ff3b3b;">${f(c.balance)} ₽</b></div>
+  <div class="ig"><label class="ilbl">Сумма</label><input type="number" id="pAmt" value="${c.payment}"></div>
+  <div class="ig"><label class="ilbl">Дата</label><input type="date" id="pDate" value="${today()}"></div>
+  <div class="ig"><label class="ilbl">Заметка (необязательно)</label><input type="text" id="pNote" placeholder="Досрочный платёж..."></div>
+  <div class="mbtns">
+    <button class="btn bghost" style="flex:1;" onclick="cm()">Отмена</button>
+    <button class="btn bprimary" style="flex:1;" onclick="subPay(${id})">✅ Записать</button>
+  </div>`);
+}
+function subPay(id){
+  const amt=parseFloat(document.getElementById('pAmt').value)||0;
+  const dt=document.getElementById('pDate').value;
+  const note=document.getElementById('pNote').value;
+  if(amt<=0){toast('Введи сумму!');return;}
+  const c=S.credits.find(x=>x.id==id);
+  S.credits=S.credits.map(x=>x.id==id?{...x,balance:Math.max(0,x.balance-amt)}:x);
+  S.history.push({id:uid(),date:dt,cid:id,cn:c.name,amt,note,type:'payment'});
+  save(); cm(); toast(`✅ Платёж ${f(amt)} ₽ записан`); render();
+}
+
+function openAddC(){
+  modal(`<div class="mtitle">➕ Новый кредит</div>
+  <div class="ig"><label class="ilbl">Название</label><input type="text" id="cN" placeholder="Т-банк"></div>
+  <div class="ig"><label class="ilbl">Остаток (₽)</label><input type="number" id="cB" placeholder="100000"></div>
+  <div class="ig"><label class="ilbl">Процентная ставка (%)</label><input type="number" id="cR" placeholder="20"></div>
+  <div class="ig"><label class="ilbl">Ежемесячный платёж (₽)</label><input type="number" id="cP" placeholder="5000"></div>
+  <div class="ig"><label class="ilbl">День месяца для напоминания (1–31)</label><input type="number" id="cD" placeholder="15" min="1" max="31"></div>
+  <div class="ig"><label class="ilbl">Цель — закрыть к дате (необязательно)</label><input type="date" id="cG"></div>
+  <div class="mbtns">
+    <button class="btn bghost" style="flex:1;" onclick="cm()">Отмена</button>
+    <button class="btn bprimary" style="flex:1;" onclick="subAddC()">Добавить</button>
+  </div>`);
+}
+function subAddC(){
+  const n=document.getElementById('cN').value.trim();
+  const b=parseFloat(document.getElementById('cB').value)||0;
+  const r=parseFloat(document.getElementById('cR').value)||0;
+  const p=parseFloat(document.getElementById('cP').value)||0;
+  const d=parseInt(document.getElementById('cD').value)||0;
+  const g=document.getElementById('cG').value;
+  if(!n||b<=0){toast('Заполни название и сумму!');return;}
+  S.credits.push({id:uid(),name:n,balance:b,rate:r,payment:p,rday:d,goal:g,color:CC[S.credits.length%CC.length]});
+  save(); cm(); toast('✅ Кредит добавлен'); render();
+}
+
+function openEditC(id){
+  const c=S.credits.find(x=>x.id==id); if(!c)return;
+  modal(`<div class="mtitle">✏️ Изменить — ${c.name}</div>
+  <div class="ig"><label class="ilbl">Название</label><input type="text" id="cN" value="${c.name}"></div>
+  <div class="ig"><label class="ilbl">Остаток (₽)</label><input type="number" id="cB" value="${c.balance}"></div>
+  <div class="ig"><label class="ilbl">Процентная ставка (%)</label><input type="number" id="cR" value="${c.rate}"></div>
+  <div class="ig"><label class="ilbl">Ежемесячный платёж (₽)</label><input type="number" id="cP" value="${c.payment}"></div>
+  <div class="ig"><label class="ilbl">День месяца для напоминания</label><input type="number" id="cD" value="${c.rday||''}" min="1" max="31"></div>
+  <div class="ig"><label class="ilbl">Цель — закрыть к дате</label><input type="date" id="cG" value="${c.goal||''}"></div>
+  <div class="mbtns">
+    <button class="btn bdanger bsm" onclick="delC(${id})">Удалить</button>
+    <button class="btn bghost" style="flex:1;" onclick="cm()">Отмена</button>
+    <button class="btn bprimary" style="flex:1;" onclick="subEditC(${id})">Сохранить</button>
+  </div>`);
+}
+function subEditC(id){
+  const n=document.getElementById('cN').value.trim();
+  const b=parseFloat(document.getElementById('cB').value)||0;
+  const r=parseFloat(document.getElementById('cR').value)||0;
+  const p=parseFloat(document.getElementById('cP').value)||0;
+  const d=parseInt(document.getElementById('cD').value)||0;
+  const g=document.getElementById('cG').value;
+  S.credits=S.credits.map(x=>x.id==id?{...x,name:n,balance:b,rate:r,payment:p,rday:d,goal:g}:x);
+  save(); cm(); toast('✅ Сохранено'); render();
+}
+function delC(id){
+  if(!confirm('Удалить кредит?'))return;
+  S.credits=S.credits.filter(x=>x.id!=id);
+  save(); cm(); render();
+}
+
+function openAddFD(){
+  modal(`<div class="mtitle">➕ Долг без процентов</div>
+  <div class="ig"><label class="ilbl">Кому должен</label><input type="text" id="dN" placeholder="Мама"></div>
+  <div class="ig"><label class="ilbl">Сумма (₽)</label><input type="number" id="dA" placeholder="50000"></div>
+  <div class="ig"><label class="ilbl">Срочность</label><select id="dU"><option value="high">СРОЧНО</option><option value="medium" selected>СКОРО</option><option value="low">ПОДОЖДЁТ</option></select></div>
+  <div class="mbtns">
+    <button class="btn bghost" style="flex:1;" onclick="cm()">Отмена</button>
+    <button class="btn bprimary" style="flex:1;" onclick="subAddFD()">Добавить</button>
+  </div>`);
+}
+function subAddFD(){
+  const n=document.getElementById('dN').value.trim(), a=parseFloat(document.getElementById('dA').value)||0;
+  if(!n||a<=0){toast('Заполни поля!');return;}
+  S.freeDebts.push({id:uid(),name:n,amount:a,urg:document.getElementById('dU').value});
+  save(); cm(); toast('✅ Добавлено'); render();
+}
+
+function openAddDt(){
+  modal(`<div class="mtitle">➕ Кто мне должен</div>
+  <div class="ig"><label class="ilbl">Имя</label><input type="text" id="pN" placeholder="Геворг"></div>
+  <div class="ig"><label class="ilbl">Сумма (₽)</label><input type="number" id="pA" placeholder="10000"></div>
+  <div class="ig"><label class="ilbl">Дата займа</label><input type="date" id="pDt" value="${today()}"></div>
+  <div class="ig"><label class="ilbl">Заметка (необязательно)</label><input type="text" id="pNo" placeholder="За что дал деньги"></div>
+  <div class="mbtns">
+    <button class="btn bghost" style="flex:1;" onclick="cm()">Отмена</button>
+    <button class="btn bprimary" style="flex:1;" onclick="subAddDt()">Добавить</button>
+  </div>`);
+}
+function subAddDt(){
+  const n=document.getElementById('pN').value.trim(), a=parseFloat(document.getElementById('pA').value)||0;
+  if(!n||a<=0){toast('Заполни имя и сумму!');return;}
+  S.debtors.push({id:uid(),name:n,amount:a,date:document.getElementById('pDt').value,note:document.getElementById('pNo').value,status:'pending',paid:0});
+  save(); cm(); toast('✅ Добавлено'); render();
+}
+function dtPaid(id){
+  S.debtors=S.debtors.map(d=>d.id==id?{...d,status:'paid',paid:d.amount}:d);
+  save(); toast('✅ Отмечено как возвращено'); render();
+}
+function openPartial(id){
+  const d=S.debtors.find(x=>x.id==id);
+  const rem=d.amount-(d.paid||0);
+  modal(`<div class="mtitle">💵 Частичный возврат — ${d.name}</div>
+  <div style="text-align:center;font-size:13px;color:var(--muted);margin-bottom:16px;">Ещё ждём: <b style="color:#3dff9b;">${f(rem)} ₽</b></div>
+  <div class="ig"><label class="ilbl">Сколько вернул</label><input type="number" id="pa" placeholder="${rem}"></div>
+  <div class="mbtns">
+    <button class="btn bghost" style="flex:1;" onclick="cm()">Отмена</button>
+    <button class="btn bprimary" style="flex:1;" onclick="subPartial(${id})">Записать</button>
+  </div>`);
+}
+function subPartial(id){
+  const a=parseFloat(document.getElementById('pa').value)||0;
+  if(a<=0){toast('Введи сумму');return;}
+  S.debtors=S.debtors.map(d=>{if(d.id!=id)return d;const np=(d.paid||0)+a;return{...d,paid:np,status:np>=d.amount?'paid':'partial'};});
+  save(); cm(); toast(`✅ Записано ${f(a)} ₽`); render();
+}
+function delDt(id){
+  S.debtors=S.debtors.filter(d=>d.id!=id); save(); render();
+}
+
+// ═══════════════════════════════════════
+// DATA UPDATERS (inline handlers)
+// ═══════════════════════════════════════
+function updFD(id,k,v){ S.freeDebts=S.freeDebts.map(d=>d.id==id?{...d,[k]:v}:d); save(); }
+function delFD(id){ S.freeDebts=S.freeDebts.filter(d=>d.id!=id); save(); render(); }
+function updInc(k,v){ S.income[k]=parseFloat(v)||0; save(); }
+function updEx(id,k,v){ S.expenses=S.expenses.map(e=>e.id==id?{...e,[k]:k==='amt'?(parseFloat(v)||0):v}:e); save(); }
+function addEx(){ S.expenses.push({id:uid(),name:'Новая статья',amt:0}); save(); render(); }
+function delEx(id){ S.expenses=S.expenses.filter(e=>e.id!=id); save(); render(); }
+function setST(p,t){ STAB[p]=t; render(); }
+function clrHist(){ if(confirm('Очистить всю историю?')){ S.history=[]; save(); render(); } }
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function toast(msg){
+  const el=document.createElement('div');
+  el.className='toast'; el.textContent=msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2700);
+}
+
+// ═══════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════
+function checkNotif(){
+  if(!('Notification' in window))return;
+  const d=new Date().getDate();
+  const due=S.credits.filter(c=>c.balance>0&&c.rday===d);
+  if(!due.length)return;
+  if(Notification.permission==='granted'){
+    due.forEach(c=>new Notification('💳 Сегодня платёж!',{body:`${c.name} — ${f(c.payment)} ₽`,tag:`pay-${c.id}`}));
+  }else if(Notification.permission!=='denied'){
+    Notification.requestPermission().then(p=>{ if(p==='granted') checkNotif(); });
+  }
+}
+
+// ═══════════════════════════════════════
+// SERVICE WORKER
+// ═══════════════════════════════════════
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+render();
+setTimeout(checkNotif, 1200);
+</script>
+</body>
+</html>

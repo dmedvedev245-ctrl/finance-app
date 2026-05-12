@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="100" fill="#07070f"/>
+  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a0a2e"/>
+      <stop offset="100%" stop-color="#07070f"/>
+    </linearGradient>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#c84bff"/>
+      <stop offset="100%" stop-color="#3dc8ff"/>
+    </linearGradient>
+  </defs>
+  <!-- Card shape -->
+  <rect x="96" y="160" width="320" height="200" rx="28" fill="url(#grad)" opacity="0.15"/>
+  <rect x="96" y="160" width="320" height="200" rx="28" fill="none" stroke="url(#grad)" stroke-width="4"/>
+  <!-- Chip -->
+  <rect x="136" y="210" width="56" height="44" rx="8" fill="url(#grad)" opacity="0.8"/>
+  <!-- Lines -->
+  <rect x="136" y="284" width="240" height="10" rx="5" fill="url(#grad)" opacity="0.6"/>
+  <rect x="136" y="306" width="140" height="10" rx="5" fill="url(#grad)" opacity="0.4"/>
+  <!-- ₽ symbol -->
+  <text x="330" y="240" font-family="Arial" font-size="52" font-weight="bold" fill="url(#grad)" text-anchor="middle">₽</text>
+</svg>
